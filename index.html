@@ -974,7 +974,7 @@ function buildElems(fmt,wrapper){
     if(n===1){
       slots=[[0,0,LG_W,LG_H]];
     } else if(n===2){
-      slots=[[0,0,LG_W,LG_H],[LG_W+GAP,0,SM_W,SM_W]];
+      slots=[[0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W]];
     } else if(n===4){
       const g4x=SM_W*2+GAP;
       slots=[
@@ -1692,7 +1692,7 @@ async function dlBanner(fmt, quality, opts){
       if(n===1){
         slots=[[0,0,LG_W,LG_H]];
       } else if(n===2){
-        slots=[[0,0,LG_W,LG_H],[LG_W+GAP,0,SM_W,SM_W]];
+        slots=[[0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W]];
       } else if(n===4){
         slots=[
           [0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W],
