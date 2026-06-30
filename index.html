@@ -96,6 +96,7 @@ function newCfg(){ return {
   promoText:'3 cuotas\nsin interés', promoSize:32, promoColor:'#ffffff',
   promoBg:'#f59e0b', promoBold:false, promoFont:'CerebriSans',
   ctaText:'¡VER BENEFICIO!', ctaSize:28, ctaColor:'#051130', ctaTextColor:'#ffffff', ctaBold:true, ctaFont:'CerebriSans',
+  ctaWidth:225, ctaHeight:48,
   colorA:'#0a1945', colorB:'#1e3a8a', useGrad:true,
   textSide:'left', clipStyle:'diagonal-right', edgeEffect:'none',
   panelW:63, diagAngle:20,
@@ -135,6 +136,7 @@ function newCfgMobile(){
   m.line1Size=64; m.line2Size=64;
   m.descNumSize=171; m.descSubSize=32;
   m.ctaSize=32;
+  m.ctaWidth=162; m.ctaHeight=56;
   m.prodSize=170; m.clientSize=140;
   // Mobile (984×450) default positions tuned to its taller canvas
   m.pos={ titulo:{xp:6,yp:7}, desc:{xp:6,yp:46}, logos:{xp:62,yp:4}, cta:{xp:30,yp:80},
@@ -1020,14 +1022,16 @@ function buildElems(fmt,wrapper){
   }
 
   // ── CTA BUTTON ────────────────────────────────────────────────────────────
+  const ctaW = c.ctaWidth || (isMob?162:225);
+  const ctaH = c.ctaHeight || (isMob?56:48);
   const cb=mk('div');
   css(cb,{background:c.ctaColor,color:c.ctaTextColor||'#fff',borderRadius:'999px',
-    width:(isMob?162:225)+'px', height:(isMob?56:48)+'px',
+    minWidth:ctaW+'px', height:ctaH+'px',
     fontSize:c.ctaSize+'px',fontWeight:c.ctaBold?'700':'400',
     boxShadow:'0 4px 16px rgba(0,0,0,.3)',whiteSpace:'nowrap',
     fontFamily:c.ctaFont==='Moranga'?'Moranga,serif':'CerebriSans,sans-serif',
     display:'flex',alignItems:'center',justifyContent:'center',
-    overflow:'hidden', padding:'0 12px',
+    padding:'0 18px',boxSizing:'border-box',
     textShadow:c.ctaBold?'0.4px 0 0 currentColor,-0.4px 0 0 currentColor':''});
   cb.textContent=c.ctaText;
   const ctaEl=placeEl('cta',cb,c.pos.cta.xp/100*BW,c.pos.cta.yp/100*BH);
@@ -1753,14 +1757,22 @@ async function dlBanner(fmt, quality, opts){
 
     // ── 6. CTA BUTTON ─────────────────────────────────────────────────────────
     {
-      const _ctaW=(fmt==='mobile'?162:225)*FS;
-      const _ctaH=(fmt==='mobile'?56:48)*FS;
-      // Position from draggable c.pos.cta (top-left), same as DOM preview
-      const x=c.pos.cta.xp/100*BW;
-      const y=c.pos.cta.yp/100*BH;
       const ff=c.ctaFont==='Moranga'?'Moranga':'CerebriSans';
       const fw=c.ctaBold?'700':'400';
       const ctaSZ=c.ctaSize*FS;
+      // Measure text width first so the button never clips the label —
+      // mirrors the DOM's minWidth + padding:'0 18px' behaviour.
+      ctx.save();
+      ctx.font=fw+' '+ctaSZ+'px "'+ff+'"';
+      const textW = ctx.measureText(c.ctaText).width;
+      ctx.restore();
+      const padX = 18*FS;
+      const _ctaWBase=(c.ctaWidth || (fmt==='mobile'?162:225))*FS;
+      const _ctaH=(c.ctaHeight || (fmt==='mobile'?56:48))*FS;
+      const _ctaW=Math.max(_ctaWBase, textW+padX*2);
+      // Position from draggable c.pos.cta (top-left), same as DOM preview
+      const x=c.pos.cta.xp/100*BW;
+      const y=c.pos.cta.yp/100*BH;
       const r=_ctaH/2;
       // Draw pill background
       ctx.save();
@@ -2277,6 +2289,8 @@ function buildLeft(){
     b.appendChild(sinp([['Moranga','Moranga'],['CerebriSans','Cerebri Sans']],c().ctaFont,v=>c().ctaFont=v));
     b.appendChild(row(bBtn('ctaBold'),(()=>{const s=mk('span');css(s,{fontSize:'11px',color:'#6b7280'});s.textContent='Negrita';return s;})()));
     b.appendChild(rrw('Tamaño texto',8,36,1,c().ctaSize,v=>c().ctaSize=v));
+    b.appendChild(rrw('Ancho del botón',60,500,1,c().ctaWidth||(S.editFmt==='mobile'?162:225),v=>c().ctaWidth=v));
+    b.appendChild(rrw('Alto del botón',24,120,1,c().ctaHeight||(S.editFmt==='mobile'?56:48),v=>c().ctaHeight=v));
     b.appendChild(gr2(
       (()=>{const d=mk('div');d.appendChild(lbl('Color botón'));
         d.appendChild(swRow(['#051130','#904AFF','#121212','#1e40af','#D877C6','#16a34a','#d97706'],c().ctaColor,v=>c().ctaColor=v));
