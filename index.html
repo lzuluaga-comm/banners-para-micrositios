@@ -1677,16 +1677,18 @@ async function dlBanner(fmt, quality, opts){
         ctx.restore();
         const blockW = numW + offW + sepGap + 12*FS + subMaxW;
         const blockH = dNS;
-        // ── Card / pill / border — grows OUTWARD from (x,y), matching DOM applyDescCard ──
-        // In the DOM, padding expands the div outward; text stays at (x,y). Same here.
+        // ── Card / pill / border ──
+        // The DOM positions the card's TOP-LEFT corner at (x,y) via placeEl,
+        // and the padding pushes the *content* inward by (padH, padV).
+        // Replicate exactly: card at (x,y), content offset inward.
         const style=c.descCardStyle||'none';
+        let ox=x, oy=y; // content origin — shifted inward when a card is present
         if(style!=='none'){
           const padV=(Math.round(c.descNumSize*0.10)+8)*FS;
-          const padH=(Math.round(c.descNumSize*0.16)+10)*FS;
-          const extraH = style==='pill'?padH:0;  // pill gets extra horizontal padding
-          const cardX=x - padH - extraH/2;       // card starts to the LEFT of text
-          const cardY=y - padV;                   // card starts ABOVE text
-          const cardW=blockW + (padH+extraH/2)*2;
+          const padHbase=(Math.round(c.descNumSize*0.16)+10)*FS;
+          const padH = style==='pill' ? padHbase+10*FS : padHbase; // pill has +10 horizontal (matches DOM)
+          const cardX=x, cardY=y;                 // card top-left AT (x,y), like the DOM
+          const cardW=blockW + padH*2;
           const cardH=blockH + padV*2;
           const rad = style==='pill'?cardH/2 : 18*FS;
           if(style==='card'){
@@ -1704,9 +1706,11 @@ async function dlBanner(fmt, quality, opts){
             ctx.lineTo(cardX,cardY+rad); ctx.arcTo(cardX,cardY,cardX+rad,cardY,rad);
             ctx.closePath(); ctx.stroke(); ctx.restore();
           }
+          // Shift content inward by the padding, exactly like the DOM box model
+          ox = x + padH;
+          oy = y + padV;
         }
-        // ── Content — text always at (x, y), card only decorates around it ──
-        const ox=x, oy=y;
+        // ── Content ──
         ctx.save();
         ctx.font=`${fw} ${dNS}px "${ff}"`;
         ctx.textBaseline='top';
