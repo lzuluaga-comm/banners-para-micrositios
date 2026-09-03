@@ -1031,6 +1031,24 @@ function sideCfg(c, side){
   };
 }
 // Band rect in BW-space.
+// ── LOGO SLOT LAYOUT (shared by DOM preview and canvas export) ───────────────
+// Returns [[x,y,w,h], ...] for n logos. 1 logo uses the big spec size; 2+ use
+// square cells in a grid. Partial rows are centred (e.g. 5 = 3 over 2).
+function logoSlots(n, LG_W, LG_H, SM_W, GAP){
+  if(n<=1) return [[0,0,LG_W,LG_H]];
+  const COLS={2:2, 3:3, 4:2, 5:3, 6:3};
+  const cols=COLS[n]||3;
+  const rows=Math.ceil(n/cols);
+  const step=SM_W+GAP;
+  const out=[];
+  for(let r=0;r<rows;r++){
+    const inRow=Math.min(cols, n-r*cols);
+    const offX=(cols-inRow)*step/2; // centre a partial last row
+    for(let i=0;i<inRow;i++) out.push([offX+i*step, r*step, SM_W, SM_W]);
+  }
+  return out;
+}
+
 function sideBandRect(s, side, BW, BH){
   const w = BW*(s.w/100);
   return { x: side==='left' ? 0 : (BW-w), y:0, w, h:BH };
@@ -1328,23 +1346,7 @@ function buildElems(fmt,wrapper){
   // ── LOGOS ─────────────────────────────────────────────────────────────────
   {
     const n=c.logoCount||1;
-    let slots;
-    if(n===1){
-      slots=[[0,0,LG_W,LG_H]];
-    } else if(n===2){
-      slots=[[0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W]];
-    } else if(n===4){
-      const g4x=SM_W*2+GAP;
-      slots=[
-        [0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W],
-        [0,SM_W+GAP,SM_W,SM_W],[SM_W+GAP,SM_W+GAP,SM_W,SM_W]
-      ];
-    } else {
-      slots=[
-        [0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W],[SM_W*2+GAP*2,0,SM_W,SM_W],
-        [0,SM_W+GAP,SM_W,SM_W],[SM_W+GAP,SM_W+GAP,SM_W,SM_W],[SM_W*2+GAP*2,SM_W+GAP,SM_W,SM_W]
-      ];
-    }
+    let slots=logoSlots(n, LG_W, LG_H, SM_W, GAP);
     // Compute group bounding box
     const gw=slots.reduce((m,s)=>Math.max(m,s[0]+s[2]),0);
     const gh=slots.reduce((m,s)=>Math.max(m,s[1]+s[3]),0);
@@ -2190,22 +2192,7 @@ async function dlBanner(fmt, quality, opts){
       const SM_W = (fmt==='mobile' ? 49  : 107) * LS;
       const GAP  = (c.logoGap!==undefined?c.logoGap:10);
       // Slots RELATIVE to the group origin — identical to the DOM version
-      let slots;
-      if(n===1){
-        slots=[[0,0,LG_W,LG_H]];
-      } else if(n===2){
-        slots=[[0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W]];
-      } else if(n===4){
-        slots=[
-          [0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W],
-          [0,SM_W+GAP,SM_W,SM_W],[SM_W+GAP,SM_W+GAP,SM_W,SM_W]
-        ];
-      } else {
-        slots=[
-          [0,0,SM_W,SM_W],[SM_W+GAP,0,SM_W,SM_W],[SM_W*2+GAP*2,0,SM_W,SM_W],
-          [0,SM_W+GAP,SM_W,SM_W],[SM_W+GAP,SM_W+GAP,SM_W,SM_W],[SM_W*2+GAP*2,SM_W+GAP,SM_W,SM_W]
-        ];
-      }
+      const slots=logoSlots(n, LG_W, LG_H, SM_W, GAP);
       // Group anchor from the draggable position (same as DOM placeEl)
       const groupX = c.pos.logos.xp/100*BW;
       const groupY = c.pos.logos.yp/100*BH;
@@ -3403,8 +3390,8 @@ function buildLeft(){
 
   // ══ LOGOS PARTNER ══
   left.appendChild(acc('logos','🏷️','Logos Partner',(b)=>{
-    b.appendChild(lbl('Plantilla de logos'));
-    b.appendChild(tabBar([['1','1 logo'],['2','2 logos'],['4','4 logos'],['6','6 logos']],String(c().logoCount||1),v=>{c().logoCount=+v;reRender();}));
+    b.appendChild(lbl('Cantidad de logos'));
+    b.appendChild(tabBar([['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],String(c().logoCount||1),v=>{c().logoCount=+v;reRender();}));
     b.appendChild(rrw('Tamaño',50,260,1,c().logoSize,v=>c().logoSize=v));
     b.appendChild(rrw('Separación',0,40,1,c().logoGap||10,v=>c().logoGap=v));
     // ── Recuadro detrás del logo ──
