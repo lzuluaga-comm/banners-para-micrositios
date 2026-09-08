@@ -2259,21 +2259,39 @@ async function dlBanner(fmt, quality, opts){
       if(c.mode==='porcentaje'){
         const dNS=c.descNumSize*FS, dSS=c.descSubSize*FS;
         const accent=c.descAccentColor||'#ffffff';
-        // ── Measure block dimensions ──
+        // ── Measure — faithful port of the DOM flex row:
+        //    dd = [ numCol (HASTA over number+%OFF) ] --gap 14-- [ sep (pad 14 + lines) ]
+        //    align-items:center · sep has minHeight = number size · line-height 1.25
         ctx.save();
-        // "HASTA" stacked ABOVE the number (0.26 of number size + 4px gap — matches DOM)
         const hastaSz=dNS*0.26;
         const hastaH=c.showHasta ? (hastaSz + 4*FS) : 0;
         ctx.font=`${fw} ${dNS}px "${ff}"`;
-        const numW=ctx.measureText(c.descNum).width;
-        const offW=c.showOff?dNS*0.32:0;
-        const sepGap=(c.showOff?dNS*0.32:6)+6;
+        const numW=ctx.measureText(c.descNum||'').width;
+        let hastaW=0;
+        if(c.showHasta){ ctx.font=`700 ${hastaSz}px "${ff}"`; hastaW=ctx.measureText(c.hastaText||'HASTA').width; }
+        // %OFF stack width measured for real (marginLeft 4px + widest of % / OFF)
+        let offW2=0;
+        if(c.showOff){
+          const pctSz=dNS*0.27, offSz=dNS*0.13;
+          ctx.font=`${fw} ${pctSz}px "${ff}"`; const wPct=ctx.measureText('%').width;
+          ctx.font=`${fw} ${offSz}px "${ff}"`; const wOff=ctx.measureText('OFF').width;
+          offW2 = 4*FS + Math.max(wPct,wOff);
+        }
+        const numRowW = (c.descNum ? numW : 0) + offW2;
+        const numColW = Math.max(numRowW, c.showHasta ? hastaW : 0);
+        // numCol height: number line (or %OFF fixed stack) + HASTA line above
+        const numColH = ((c.descNum || c.showOff) ? dNS : 0) + hastaH;
+        const GAPDD=14*FS, PADSEP=14*FS;
         ctx.font=`500 ${dSS}px "${ff}"`;
         const subLines=c.descSub.split('\n');
         let subMaxW=0; subLines.forEach(l=>{const w=ctx.measureText(l).width; if(w>subMaxW)subMaxW=w;});
+        const lineH=dSS*1.25;                       // DOM line-height: 1.25
+        const contentH=subLines.length*lineH;
+        const sepH=Math.max(dNS, contentH);          // DOM sep minHeight = descNumSize
+        const rowH=Math.max(numColH, sepH);          // dd height (align-items:center)
         ctx.restore();
-        const blockW = numW + offW + sepGap + 12*FS + subMaxW;
-        const blockH = dNS + hastaH;
+        const blockW = numColW + GAPDD + PADSEP + subMaxW;
+        const blockH = rowH;
         // ── Card / pill / border ──
         // The DOM positions the card's TOP-LEFT corner at (x,y) via placeEl,
         // and the padding pushes the *content* inward by (padH, padV).
@@ -2307,23 +2325,25 @@ async function dlBanner(fmt, quality, opts){
           ox = x + padH;
           oy = y + padV;
         }
-        // ── Content ──
+        // ── Content — every box centred exactly like the DOM flex row ──
         ctx.save();
+        const numColTop = oy + (rowH - numColH)/2;
         // HASTA stacked above the number, optically aligned to the number's INK
-        // (same side-bearing compensation as the DOM preview).
         if(c.showHasta){
           const inkOff=numInkOffset(`${fw} ${dNS}px "${ff}"`, c.descNum);
           ctx.font=`700 ${hastaSz}px "${ff}"`;
           ctx.textBaseline='top';
           ctx.fillStyle=c.descNumColor;
-          ctx.fillText(c.hastaText||'HASTA', ox+inkOff, oy);
+          ctx.fillText(c.hastaText||'HASTA', ox+inkOff, numColTop);
         }
-        const numY = oy + hastaH;
-        ctx.font=`${fw} ${dNS}px "${ff}"`;
+        const numY = numColTop + hastaH;
         ctx.textBaseline='top';
         ctx.fillStyle=c.descNumColor;
-        if(c.descBold){ctx.fillText(c.descNum,ox+0.4,numY);ctx.fillText(c.descNum,ox-0.4,numY);}
-        ctx.fillText(c.descNum,ox,numY);
+        if(c.descNum){
+          ctx.font=`${fw} ${dNS}px "${ff}"`;
+          if(c.descBold){ctx.fillText(c.descNum,ox+0.4,numY);ctx.fillText(c.descNum,ox-0.4,numY);}
+          ctx.fillText(c.descNum,ox,numY);
+        }
         if(c.showOff){
           const pctSz=dNS*0.27, offSz=dNS*0.13;
           const stackH = pctSz + 3 + offSz;
@@ -2333,26 +2353,27 @@ async function dlBanner(fmt, quality, opts){
           ctx.font=`${fw} ${offSz}px "${ff}"`;
           ctx.fillText('OFF', ox+numW+4, stackY+pctSz+3);
         }
-        const sepX=ox+numW+sepGap;
-        // Editable separator bar — centred on the FULL block (hasta + number),
-        // matching the DOM's align-items:center on the flex row.
+        // sep box: after numCol + flex gap; vertically centred in the row
+        const sepLeft = ox + numColW + GAPDD;
+        const sepTop  = oy + (rowH - sepH)/2;
+        // Editable separator bar — % of the SEP BOX height (like the DOM),
+        // drawn at the sep's left edge and centred within it.
         if(c.descSepOn!==false && (c.descSepW===undefined || c.descSepW>0)){
           const sw2=(c.descSepW!==undefined?c.descSepW:2)*FS;
           const shPct=(c.descSepH!==undefined?c.descSepH:100)/100;
-          const sh2=dNS*shPct;
-          const sy2=oy+(blockH-sh2)/2;
+          const sh2=sepH*shPct;
+          const sy2=sepTop+(sepH-sh2)/2;
           ctx.fillStyle=c.descSepColor||accent;
-          ctx.fillRect(sepX-sw2/2, sy2, sw2, sh2);
+          ctx.fillRect(sepLeft, sy2, sw2, sh2);
         }
-        // Subtext: vertically centred against the full block
+        // Subtext: lines centred inside the sep box (justify-content:center),
+        // each glyph run centred within its 1.25 line box.
         ctx.font=`500 ${dSS}px "${ff}"`;
-        const lineH=dSS*1.3;
-        const totalSubH=subLines.length*lineH;
-        const subStartY=oy+(blockH-totalSubH)/2;
+        const contentTop = sepTop + (sepH - contentH)/2;
         ctx.textAlign = (c.descSubAlign||'left')==='center'?'center':(c.descSubAlign==='right'?'right':'left');
         subLines.forEach((ln,i)=>{
           ctx.fillStyle=c.descSubColor;
-          ctx.fillText(ln, sepX+12*FS, subStartY+i*lineH);
+          ctx.fillText(ln, sepLeft+PADSEP, contentTop + i*lineH + (lineH-dSS)/2);
         });
         ctx.textAlign='left';
         ctx.restore();
