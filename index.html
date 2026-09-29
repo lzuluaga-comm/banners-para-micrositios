@@ -2408,11 +2408,11 @@ async function dlBanner(fmt, quality, opts){
       let w2=0; c.line2Segs.forEach(s=>{if(s.text)w2+=ctx.measureText(s.text).width;});
       ctx.restore();
 
-      drawSegs(c.line1Segs, x, y, sz1, c.line1Font, c.line1Bold, false, 'left');
+      drawSegs(c.line1Segs, x, y, sz1, c.line1Font, c.line1Bold, !!c.line1Italic, 'left');
 
       const a2=c.line2Align||'left';
       const x2 = a2==='center' ? x+(w1-w2)/2 : a2==='right' ? x+w1-w2 : x;
-      drawSegs(c.line2Segs, x2, y+lh1, sz2, c.line2Font, c.line2Bold, true, 'left');
+      drawSegs(c.line2Segs, x2, y+lh1, sz2, c.line2Font, c.line2Bold, !!c.line2Italic, 'left');
     }
 
 
